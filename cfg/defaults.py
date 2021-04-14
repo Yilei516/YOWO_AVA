@@ -569,23 +569,31 @@ _C.AVA = CfgNode()
 
 # Directory path of frames.
 # _C.AVA.FRAME_DIR = "/mnt/fair-flash3-east/ava_trainval_frames.img/"
-_C.AVA.FRAME_DIR = "/usr/home/sut/datasets/AVA/frames/"
+#_C.AVA.FRAME_DIR = "/usr/home/sut/datasets/AVA/frames/"
+_C.AVA.FRAME_DIR = "/scratch/ssd002/datasets/cv_project/ava/frames/"
 
 # Directory path for files of frame lists.
 # _C.AVA.FRAME_LIST_DIR = (
 #     "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
 # )
+#_C.AVA.FRAME_LIST_DIR = (
+#    "/usr/home/sut/datasets/AVA/frame_lists/"
+# )
 _C.AVA.FRAME_LIST_DIR = (
-    "/usr/home/sut/datasets/AVA/frame_lists/"
+    "/scratch/ssd002/datasets/cv_project/ava/frame_lists/"
 )
 
 # Directory path for annotation files.
 # _C.AVA.ANNOTATION_DIR = (
 #     "/mnt/vol/gfsai-flash3-east/ai-group/users/haoqifan/ava/frame_list/"
 # )
+#_C.AVA.ANNOTATION_DIR = (
+#    "/usr/home/sut/datasets/AVA/annotations/"
+#)
+
 _C.AVA.ANNOTATION_DIR = (
-    "/usr/home/sut/datasets/AVA/annotations/"
-)
+    "/scratch/ssd002/datasets/cv_project/ava/annotations/"
+)  
 
 # Filenames of training samples list files.
 _C.AVA.TRAIN_LISTS = ["train.csv"]

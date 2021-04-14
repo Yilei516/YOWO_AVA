@@ -20,6 +20,8 @@ from core.utils import *
 from core.region_loss import RegionLoss, RegionLoss_Ava
 from core.model import YOWO, get_fine_tuning_parameters
 
+import wandb
+from torch.utils.data import RandomSampler
 
 ####### Load configuration arguments
 # ---------------------------------------------------------------
@@ -62,16 +64,31 @@ best_score   = 0 # initialize best score
 # ---------------------------------------------------------------
 if cfg.TRAIN.RESUME_PATH:
     print("===================================================================")
-    print('loading checkpoint {}'.format(cfg.TRAIN.RESUME_PATH))
-    checkpoint = torch.load(cfg.TRAIN.RESUME_PATH)
-    cfg.TRAIN.BEGIN_EPOCH = checkpoint['epoch'] + 1
-    best_score = checkpoint['score']
-    model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-    print("Loaded model score: ", checkpoint['score'])
-    print("===================================================================")
-    del checkpoint
+    if ".pth" in cfg.TRAIN.RESUME_PATH:
+        chkpt = cfg.TRAIN.RESUME_PATH
+    else:
+        chkpt_core = 'yowo_' + cfg.TRAIN.DATASET + '_' + str(cfg.DATA.NUM_FRAMES) + 'f'
+        chkpt = [c for c in os.listdir(cfg.TRAIN.RESUME_PATH) if chkpt_core in c and 'checkpoint.pth' in c]
+        if chkpt:
+            max_len = max([len(c) for c in chkpt])
+            chkpt = sorted([c for c in chkpt if len(c)==max_len])
+            chkpt = os.path.join(cfg.TRAIN.RESUME_PATH,chkpt[-1])
+    if chkpt:
+        print('loading checkpoint {}'.format(chkpt))
+        checkpoint = torch.load(chkpt)
+        cfg.TRAIN.BEGIN_EPOCH = checkpoint['epoch'] + 1
+        best_score = checkpoint['score']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        wandb_id = checkpoint.get('wandb_id',None)
+        print("Loaded model score: ", checkpoint['score'])
+        print("===================================================================")
+        del checkpoint
 
+if 'wandb_id' not in globals() or not wandb_id: wandb_id = wandb.util.generate_id()
+logging(f'wandb_id: {wandb_id}')
+wandb.init(project=f'YOWO_{cfg.TRAIN.DATASET}', entity='wuyilei516', id=wandb_id, resume="allow")
+wandb.watch(model)
 
 ####### Create backup directory if necessary
 # ---------------------------------------------------------------
@@ -84,14 +101,19 @@ if not os.path.exists(cfg.BACKUP_DIR):
 dataset = cfg.TRAIN.DATASET
 assert dataset == 'ucf24' or dataset == 'jhmdb21' or dataset == 'ava', 'invalid dataset'
 
+train_n_sample_from = 1 if dataset not in ('ucf24','ava') else 15
+test_n_sample_from = 1 if cfg.TRAIN.EVALUATE or dataset not in ('ucf24','ava') else 30
+
 if dataset == 'ava':
     train_dataset = Ava(cfg, split='train', only_detection=False)
     test_dataset  = Ava(cfg, split='val', only_detection=False)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=True, 
+    train_rs = RandomSampler(train_dataset,replacement=True, num_samples=int(len(train_dataset)/train_n_sample_from))
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=train_rs, shuffle=True, 
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
     
-    test_loader  = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False,
+    test_rs = RandomSampler(test_dataset, replacement=True, num_samples=int(len(test_dataset)/test_n_sample_from))
+    test_loader  = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=test_rs, shuffle=False,
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=False, pin_memory=True)
 
     loss_module   = RegionLoss_Ava(cfg).cuda()
@@ -137,7 +159,8 @@ else:
         train(cfg, epoch, model, train_loader, loss_module, optimizer)
         logging('testing at epoch %d' % (epoch))
         score = test(cfg, epoch, model, test_loader)
-
+        wandb.log({"Test Score": score})
+        
         # Save the model to backup directory
         is_best = score > best_score
         if is_best:
@@ -146,10 +169,11 @@ else:
             best_score = score
 
         state = {
+            'wandb_id': wandb_id,
             'epoch': epoch,
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'score': score
             }
-        save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES)
+        save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES,epoch)
         logging('Weights are saved to backup directory: %s' % (cfg.BACKUP_DIR))

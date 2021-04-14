@@ -3,7 +3,7 @@ import torch
 import time
 from core.utils import *
 from datasets.meters import AVAMeter
-
+import wandb
 
 
 def train_ava(cfg, epoch, model, train_loader, loss_module, optimizer):
@@ -17,13 +17,17 @@ def train_ava(cfg, epoch, model, train_loader, loss_module, optimizer):
         target = {'cls': batch['cls'], 'boxes': batch['boxes']}
         output = model(data)
         loss = loss_module(output, target, epoch, batch_idx, l_loader)
-
         loss.backward()
         steps = cfg.TRAIN.TOTAL_BATCH_SIZE // cfg.TRAIN.BATCH_SIZE
         if batch_idx % steps == 0:
             optimizer.step()
             optimizer.zero_grad()
-
+        
+        # log training loss
+        wandb.log({"Training Loss": loss.item()})
+        # print loss every 50 batches
+        if batch_idx % 50 == 0:
+            logging(f"EPOCH {epoch}, BATCH {batch_idx}, LOSS {loss.item()}")
         # save result every 1000 batches
         if batch_idx % 2000 == 0: # From time to time, reset averagemeters to see improvements
             loss_module.reset_meters()
