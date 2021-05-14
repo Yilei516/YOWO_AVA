@@ -77,8 +77,8 @@ def test_ava(cfg, epoch, model, test_loader):
 
     nbatch = len(test_loader)
    
-    # meter = AVAMeter(cfg, cfg.TRAIN.MODE, 'latest_detection.json')
-    meter = AVAMeter(cfg, 'val', 'latest_detection.json')
+    meter = AVAMeter(cfg, cfg.TRAIN.MODE, 'latest_detection.json')
+    # meter = AVAMeter(cfg, 'val', 'latest_detection.json')
 
     model.eval()
     for batch_idx, batch in enumerate(test_loader):

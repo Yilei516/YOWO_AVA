@@ -2,7 +2,7 @@
 #SBATCH --partition=rtx6000
 #SBATCH --qos=normal
 #SBATCH --cpus-per-gpu=8
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --job-name=train_ava
 #SBATCH --output=output_ava.log

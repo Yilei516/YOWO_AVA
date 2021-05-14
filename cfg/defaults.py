@@ -110,7 +110,8 @@ _C.TEST = CfgNode()
 _C.TEST.ENABLE = True
 
 # Dataset for testing.
-_C.TEST.DATASET = "kinetics"
+# _C.TEST.DATASET = "kinetics"
+_C.TEST.DATASET = "ava"
 
 # Total mini-batch size
 _C.TEST.BATCH_SIZE = 8
