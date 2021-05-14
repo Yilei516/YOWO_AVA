@@ -1,5 +1,5 @@
 TRAIN:
-  RESUME_PATH: backup
+  RESUME_PATH: "backup/ava"
   DATASET: ava  # `ava`, `ucf24` or `jhmdb21`
   BATCH_SIZE: 6
   TOTAL_BATCH_SIZE: 128
@@ -7,7 +7,7 @@ TRAIN:
   EVALUATE: False
   MODE: "train"  # `train`, `test` or `val`
   BEGIN_EPOCH: 1
-  END_EPOCH: 10
+  END_EPOCH: 100
   CLASS_RATIO_FILE: "cfg/ava_categories_ratio.json"
   USE_GROUNDTRUTH: False
   USE_SLOWFAST: False

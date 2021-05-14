@@ -37,20 +37,26 @@ if not os.path.exists(cfg.BACKUP_DIR):
 
 ####### Create model
 # ---------------------------------------------------------------
+gpu_ids = list(range(torch.cuda.device_count()))
+gpus = ','.join([str(g) for g in gpu_ids]) # gpus          = data_options['gpus']  # e.g. 0,1,2,3
+ngpus = len(gpu_ids) # ngpus         = len(gpus.split(','))
+cfg.TRAIN.BATCH_SIZE = cfg.TRAIN.BATCH_SIZE*ngpus
+
+use_cuda = True
+seed = int(time.time())
+if use_cuda:
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpus # TODO: add to config e.g. 0,1,2,3
+    torch.cuda.manual_seed(seed)
+else:
+    torch.manual_seed(seed)
+
 model = YOWO(cfg)
 model = model.cuda()
-model = nn.DataParallel(model, device_ids=None) # in multi-gpu case
+model = nn.DataParallel(model, device_ids=gpu_ids) # in multi-gpu case
+
 # print(model)
 pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 logging('Total number of trainable parameters: {}'.format(pytorch_total_params))
-
-seed = int(time.time())
-torch.manual_seed(seed)
-use_cuda = True
-if use_cuda:
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0' # TODO: add to config e.g. 0,1,2,3
-    torch.cuda.manual_seed(seed)
-
 
 ####### Create optimizer
 # ---------------------------------------------------------------
@@ -71,7 +77,7 @@ if cfg.TRAIN.RESUME_PATH:
         chkpt = [c for c in os.listdir(cfg.TRAIN.RESUME_PATH) if chkpt_core in c and 'checkpoint.pth' in c]
         if chkpt:
             max_len = max([len(c) for c in chkpt])
-            chkpt = sorted([c for c in chkpt if len(c)==max_len])
+            hkpt = sorted([c for c in chkpt if len(c)==max_len])
             chkpt = os.path.join(cfg.TRAIN.RESUME_PATH,chkpt[-1])
     if chkpt:
         print('loading checkpoint {}'.format(chkpt))
@@ -92,6 +98,7 @@ wandb.watch(model)
 
 ####### Create backup directory if necessary
 # ---------------------------------------------------------------
+logging(f"Backup dir: {cfg.BACKUP_DIR}")
 if not os.path.exists(cfg.BACKUP_DIR):
     os.mkdir(cfg.BACKUP_DIR)
 
@@ -101,15 +108,20 @@ if not os.path.exists(cfg.BACKUP_DIR):
 dataset = cfg.TRAIN.DATASET
 assert dataset == 'ucf24' or dataset == 'jhmdb21' or dataset == 'ava', 'invalid dataset'
 
-train_n_sample_from = 1 if dataset not in ('ucf24','ava') else 15
-test_n_sample_from = 1 if cfg.TRAIN.EVALUATE or dataset not in ('ucf24','ava') else 30
+train_n_sample_from = 20 if dataset == 'ava' else 1
+test_n_sample_from = 60 if dataset == 'ava' else 1
 
 if dataset == 'ava':
-    train_dataset = Ava(cfg, split='train', only_detection=False)
+    # train_dataset = Ava(cfg, split='train', only_detection=False)
     test_dataset  = Ava(cfg, split='val', only_detection=False)
 
-    train_rs = RandomSampler(train_dataset,replacement=True, num_samples=int(len(train_dataset)/train_n_sample_from))
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=train_rs, shuffle=True, 
+    train_dataset = Ava(cfg, split='train', only_detection=False)
+    
+    # train_rs = RandomSampler(train_dataset,replacement=True, num_samples=int(len(train_dataset)/train_n_sample_from))
+    # train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=train_rs, shuffle=False, 
+    #                                           num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
+    
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, 
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
     
     test_rs = RandomSampler(test_dataset, replacement=True, num_samples=int(len(test_dataset)/test_n_sample_from))
@@ -148,7 +160,8 @@ elif dataset in ['ucf24', 'jhmdb21']:
 # ---------------------------------------------------------------
 if cfg.TRAIN.EVALUATE:
     logging('evaluating ...')
-    test(cfg, 0, model, test_loader)
+    # test(cfg, 0, model, test_loader)
+    test(cfg, 0, model, train_loader) # for sanity check
 else:
     for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH + 1):
         # Adjust learning rate
@@ -160,6 +173,7 @@ else:
         logging('testing at epoch %d' % (epoch))
         score = test(cfg, epoch, model, test_loader)
         wandb.log({"Test Score": score})
+        wandb.log({'Learning Rate': lr_new})
         
         # Save the model to backup directory
         is_best = score > best_score

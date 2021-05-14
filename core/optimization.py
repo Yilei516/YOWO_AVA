@@ -12,6 +12,7 @@ def train_ava(cfg, epoch, model, train_loader, loss_module, optimizer):
     l_loader = len(train_loader)
 
     model.train()
+    n_batch = len(train_loader)
     for batch_idx, batch in enumerate(train_loader):
         data = batch['clip'].cuda()
         target = {'cls': batch['cls'], 'boxes': batch['boxes']}
@@ -27,7 +28,7 @@ def train_ava(cfg, epoch, model, train_loader, loss_module, optimizer):
         wandb.log({"Training Loss": loss.item()})
         # print loss every 50 batches
         if batch_idx % 50 == 0:
-            logging(f"EPOCH {epoch}, BATCH {batch_idx}, LOSS {loss.item()}")
+            logging(f"EPOCH {epoch}, BATCH {batch_idx}/{n_batch}, LOSS {loss.item()}")
         # save result every 1000 batches
         if batch_idx % 2000 == 0: # From time to time, reset averagemeters to see improvements
             loss_module.reset_meters()
@@ -67,7 +68,7 @@ def train_ucf24_jhmdb21(cfg, epoch, model, train_loader, loss_module, optimizer)
 
 @torch.no_grad()
 def test_ava(cfg, epoch, model, test_loader):
-     # Test parameters
+    # Test parameters
     num_classes       = cfg.MODEL.NUM_CLASSES
     anchors           = [float(i) for i in cfg.SOLVER.ANCHORS]
     num_anchors       = cfg.SOLVER.NUM_ANCHORS
@@ -75,7 +76,9 @@ def test_ava(cfg, epoch, model, test_loader):
     conf_thresh_valid = 0.005
 
     nbatch = len(test_loader)
-    meter = AVAMeter(cfg, cfg.TRAIN.MODE, 'latest_detection.json')
+   
+    # meter = AVAMeter(cfg, cfg.TRAIN.MODE, 'latest_detection.json')
+    meter = AVAMeter(cfg, 'val', 'latest_detection.json')
 
     model.eval()
     for batch_idx, batch in enumerate(test_loader):
@@ -103,9 +106,11 @@ def test_ava(cfg, epoch, model, test_loader):
 
         meter.update_stats(preds)
         logging("[%d/%d]" % (batch_idx, nbatch))
+        mAP = meter.evaluate_ava()
+        logging("mode: {} -- mAP: {}".format(meter.mode, mAP))
 
     mAP = meter.evaluate_ava()
-    logging("mode: {} -- mAP: {}".format(meter.mode, mAP))
+    logging("final: mode: {} -- mAP: {}".format(meter.mode, mAP))
 
     return mAP
 
