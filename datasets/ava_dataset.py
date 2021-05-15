@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class Ava(torch.utils.data.Dataset):
-    def __init__(self, cfg, split, only_detection=False):
+    def __init__(self, cfg, split, only_detection=False, sanity_check=False):
         self.cfg = cfg
         self._split = split
         self._only_detection = only_detection
+        self._sanity_check = sanity_check
         # if self._only_detection:
         #     self._downsample = 4
         # else:
@@ -96,6 +97,8 @@ class Ava(torch.utils.data.Dataset):
         self._max_objs = ava_helper.get_max_objs(
             self._keyframe_indices, self._keyframe_boxes_and_labels
         )
+        if self._sanity_check:
+            self._keyframe_indices = self._keyframe_indices[:100]
         self.print_summary()
 
     def print_summary(self):

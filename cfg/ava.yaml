@@ -7,7 +7,7 @@ TRAIN:
   EVALUATE: False
   MODE: "train"  # `train`, `test` or `val`
   BEGIN_EPOCH: 1
-  END_EPOCH: 100
+  END_EPOCH: 500
   CLASS_RATIO_FILE: "cfg/ava_categories_ratio.json"
   USE_GROUNDTRUTH: False
   USE_SLOWFAST: False

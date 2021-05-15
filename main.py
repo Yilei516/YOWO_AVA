@@ -109,17 +109,20 @@ dataset = cfg.TRAIN.DATASET
 assert dataset == 'ucf24' or dataset == 'jhmdb21' or dataset == 'ava', 'invalid dataset'
 
 # train_n_sample_from = 20 if dataset == 'ava' else 1
-train_n_sample_from = 100 if dataset == 'ava' else 1 # for sanity check
+# train_n_sample_from = 2000 if dataset == 'ava' else 1 # for sanity check
 test_n_sample_from = 60 if dataset == 'ava' else 1
 
 if dataset == 'ava':
-    train_dataset = Ava(cfg, split='train', only_detection=False)
+    train_dataset = Ava(cfg, split='train', only_detection=False, sanity_check=True)
+    print(f"Training data size: {len(train_dataset)}")
     test_dataset  = Ava(cfg, split='val', only_detection=False)
-    
+    """
     train_rs = RandomSampler(train_dataset,replacement=True, num_samples=int(len(train_dataset)/train_n_sample_from))
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=train_rs, shuffle=False, 
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
-    
+    """
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, 
+                                               num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
     test_rs = RandomSampler(test_dataset, replacement=True, num_samples=int(len(test_dataset)/test_n_sample_from))
     test_loader  = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=test_rs, shuffle=False,
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=False, pin_memory=True)
@@ -160,30 +163,30 @@ if cfg.TRAIN.EVALUATE:
 else:
     for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH + 1):
         # Adjust learning rate
-        lr_new = adjust_learning_rate(optimizer, epoch, cfg)
-        
-        # Train and test model
+        if epoch == 1 or epoch%100==0:
+            lr_new = adjust_learning_rate(optimizer, epoch, cfg)
         logging('training at epoch %d, lr %f' % (epoch, lr_new))
         train(cfg, epoch, model, train_loader, loss_module, optimizer)
         logging('testing at epoch %d' % (epoch))
         # score = test(cfg, epoch, model, test_loader)
-        score = test(cfg, epoch, model, train_loader)
-        wandb.log({"Test Score": score})
-        wandb.log({'Learning Rate': lr_new})
+        if epoch%100 == 0:
+            score = test(cfg, epoch, model, train_loader)
+            wandb.log({"Test Score": score})
+            wandb.log({'Learning Rate': lr_new})
         
-        # Save the model to backup directory
-        is_best = score > best_score
-        if is_best:
-            print("New best score is achieved: ", score)
-            print("Previous score was: ", best_score)
-            best_score = score
+            # Save the model to backup directory
+            is_best = score > best_score
+            if is_best:
+                print("New best score is achieved: ", score)
+                print("Previous score was: ", best_score)
+                best_score = score
 
-        state = {
-            'wandb_id': wandb_id,
-            'epoch': epoch,
-            'state_dict': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'score': score
-            }
-        save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES,epoch)
-        logging('Weights are saved to backup directory: %s' % (cfg.BACKUP_DIR))
+            state = {
+                'wandb_id': wandb_id,
+                'epoch': epoch,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'score': score
+                }
+            save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES,epoch)
+            logging('Weights are saved to backup directory: %s' % (cfg.BACKUP_DIR))
