@@ -72,7 +72,7 @@ class AVAMeter(object):
             gt_filename = os.path.join(
                 cfg.AVA.ANNOTATION_DIR, "ava_train_v2.2.csv"
             )
-        # end of for sanity check
+        
         self.full_groundtruth = read_csv(gt_filename, self.class_whitelist)
         self.mini_groundtruth = get_ava_mini_groundtruth(self.full_groundtruth)
         _, self.video_idx_to_name = ava_helper.load_image_lists(cfg, self.mode == 'train')
