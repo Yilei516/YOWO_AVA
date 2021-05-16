@@ -50,27 +50,28 @@ class AVAMeter(object):
         self.mode = mode
         self.output_json = os.path.join(self.cfg.BACKUP_DIR, output_json)
         self.full_ava_test = cfg.AVA.FULL_TEST_ON_VAL
-        """
-        self.excluded_keys = read_exclusions(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.EXCLUSION_FILE)
-        )
-        self.categories, self.class_whitelist = read_labelmap(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
-        )
-        gt_filename = os.path.join(
-            cfg.AVA.ANNOTATION_DIR, cfg.AVA.GROUNDTRUTH_FILE
-        )
-        """
-        # for sanity check
-        self.excluded_keys = read_exclusions(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.TRAIN_EXCLUSION_FILE)
-        )
-        self.categories, self.class_whitelist = read_labelmap(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
-        )
-        gt_filename = os.path.join(
-            cfg.AVA.ANNOTATION_DIR, "ava_train_v2.2.csv"
-        )
+        if self.mode != 'train':
+        # Test
+            self.excluded_keys = read_exclusions(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.EXCLUSION_FILE)
+            )
+            self.categories, self.class_whitelist = read_labelmap(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
+            )
+            gt_filename = os.path.join(
+                cfg.AVA.ANNOTATION_DIR, cfg.AVA.GROUNDTRUTH_FILE # defaults.py - "ava_val_v2.2.csv"
+            )
+        else:
+        # Train
+            self.excluded_keys = read_exclusions(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.TRAIN_EXCLUSION_FILE)
+            )
+            self.categories, self.class_whitelist = read_labelmap(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
+            )
+            gt_filename = os.path.join(
+                cfg.AVA.ANNOTATION_DIR, "ava_train_v2.2.csv"
+            )
         # end of for sanity check
         self.full_groundtruth = read_csv(gt_filename, self.class_whitelist)
         self.mini_groundtruth = get_ava_mini_groundtruth(self.full_groundtruth)
@@ -93,8 +94,8 @@ class AVAMeter(object):
         groundtruth = tuple(reduce_keys(i) for i in groundtruth)
         detections = tuple(reduce_keys(i) for i in detections)
 
-        logger.info("Evaluating with %d unique GT frames." % len(groundtruth[0]))
-        logger.info("Evaluating with %d unique detection frames" % len(detections[0]))
+        logging.info("Evaluating with %d unique GT frames." % len(groundtruth[0]))
+        logging.info("Evaluating with %d unique detection frames" % len(detections[0]))
 
         name = "latest"
         write_results(detections, os.path.join(self.cfg.BACKUP_DIR, "detections_%s.csv" % name))
