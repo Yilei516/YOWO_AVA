@@ -50,28 +50,26 @@ class AVAMeter(object):
         self.mode = mode
         self.output_json = os.path.join(self.cfg.BACKUP_DIR, output_json)
         self.full_ava_test = cfg.AVA.FULL_TEST_ON_VAL
-        """
-        self.excluded_keys = read_exclusions(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.EXCLUSION_FILE)
-        )
-        self.categories, self.class_whitelist = read_labelmap(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
-        )
-        gt_filename = os.path.join(
-            cfg.AVA.ANNOTATION_DIR, cfg.AVA.GROUNDTRUTH_FILE
-        )
-        """
-        # for sanity check
-        self.excluded_keys = read_exclusions(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.TRAIN_EXCLUSION_FILE)
-        )
-        self.categories, self.class_whitelist = read_labelmap(
-            os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
-        )
-        gt_filename = os.path.join(
-            cfg.AVA.ANNOTATION_DIR, "ava_train_v2.2.csv"
-        )
-        # end of for sanity check
+        if self.mode != 'train':
+            self.excluded_keys = read_exclusions(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.EXCLUSION_FILE)
+            )
+            self.categories, self.class_whitelist = read_labelmap(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
+            )
+            gt_filename = os.path.join(
+                cfg.AVA.ANNOTATION_DIR, cfg.AVA.GROUNDTRUTH_FILE
+            )
+        else:
+            self.excluded_keys = read_exclusions(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.TRAIN_EXCLUSION_FILE)
+            )
+            self.categories, self.class_whitelist = read_labelmap(
+                os.path.join(cfg.AVA.ANNOTATION_DIR, cfg.AVA.LABEL_MAP_FILE)
+            )
+            gt_filename = os.path.join(
+                cfg.AVA.ANNOTATION_DIR, "ava_train_v2.2.csv"
+            )
         self.full_groundtruth = read_csv(gt_filename, self.class_whitelist)
         self.mini_groundtruth = get_ava_mini_groundtruth(self.full_groundtruth)
         _, self.video_idx_to_name = ava_helper.load_image_lists(cfg, self.mode == 'train')

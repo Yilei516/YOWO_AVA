@@ -67,7 +67,8 @@ def train_ucf24_jhmdb21(cfg, epoch, model, train_loader, loss_module, optimizer)
 
 
 @torch.no_grad()
-def test_ava(cfg, epoch, model, test_loader):
+def test_ava(cfg, epoch, model, test_loader, mode='val'):
+    
     # Test parameters
     num_classes       = cfg.MODEL.NUM_CLASSES
     anchors           = [float(i) for i in cfg.SOLVER.ANCHORS]
@@ -76,10 +77,7 @@ def test_ava(cfg, epoch, model, test_loader):
     conf_thresh_valid = 0.005
 
     nbatch = len(test_loader)
-   
-    meter = AVAMeter(cfg, cfg.TRAIN.MODE, 'latest_detection.json')
-    # meter = AVAMeter(cfg, 'val', 'latest_detection.json')
-
+    meter = AVAMeter(cfg, mode, 'latest_detection.json') # Mode has to align with test_loader, so that meter loads the correct groundtruth.
     model.eval()
     for batch_idx, batch in enumerate(test_loader):
         data = batch['clip'].cuda()
