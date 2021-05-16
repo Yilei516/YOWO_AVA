@@ -84,8 +84,15 @@ class AVAMeter(object):
             groundtruth = self.full_groundtruth
         else:
             groundtruth = self.mini_groundtruth
-        logger.info("Evaluating with %d unique GT frames." % len(groundtruth[0]))
-        logger.info("Evaluating with %d unique detection frames" % len(detections[0]))
+        
+        keys = set(groundtruth[0].keys()).intersection(detections[0].keys())
+        def reduce_keys(dic):
+            return {k:v for k, v in dic.items() if k in keys}
+        groundtruth = tuple(reduce_keys(i) for i in groundtruth)
+        detections = tuple(reduce_keys(i) for i in detections)
+
+        logging.info("Evaluating with %d unique GT frames." % len(groundtruth[0]))
+        logging.info("Evaluating with %d unique detection frames" % len(detections[0]))
 
         name = "latest"
         write_results(detections, os.path.join(self.cfg.BACKUP_DIR, "detections_%s.csv" % name))
