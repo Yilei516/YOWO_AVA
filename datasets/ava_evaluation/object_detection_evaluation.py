@@ -696,6 +696,7 @@ class ObjectDetectionEvaluation(object):
                 groundtruth_masks = np.empty(shape=[0, 1, 1], dtype=float)
             groundtruth_is_difficult_list = np.array([], dtype=bool)
             groundtruth_is_group_of_list = np.array([], dtype=bool)
+        
         (
             scores,
             tp_fp_labels,

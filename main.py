@@ -163,15 +163,16 @@ if cfg.TRAIN.EVALUATE:
 else:
     for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH + 1):
         # Adjust learning rate
-        if epoch == 1 or epoch%100==0:
-            lr_new = adjust_learning_rate(optimizer, epoch, cfg)
+        if epoch == cfg.TRAIN.BEGIN_EPOCH or epoch%100==0:
+            # lr_new = adjust_learning_rate(optimizer, epoch, cfg)
+            lr_new = 0.001/(math.sqrt(epoch))
         logging('training at epoch %d, lr %f' % (epoch, lr_new))
         train(cfg, epoch, model, train_loader, loss_module, optimizer)
         logging('testing at epoch %d' % (epoch))
         # score = test(cfg, epoch, model, test_loader)
         if epoch%100 == 0:
             score = test(cfg, epoch, model, train_loader)
-            wandb.log({"Test Score": score})
+            wandb.log({"Test mAP": score})
             wandb.log({'Learning Rate': lr_new})
         
             # Save the model to backup directory
