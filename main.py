@@ -46,9 +46,9 @@ use_cuda = True
 seed = int(time.time())
 if use_cuda:
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus # TODO: add to config e.g. 0,1,2,3
-    torch.cuda.manual_seed(seed)
+    # torch.cuda.manual_seed(seed)
 else:
-    torch.manual_seed(seed)
+    # torch.manual_seed(seed)
 
 model = YOWO(cfg)
 model = model.cuda()
@@ -108,21 +108,21 @@ if not os.path.exists(cfg.BACKUP_DIR):
 dataset = cfg.TRAIN.DATASET
 assert dataset == 'ucf24' or dataset == 'jhmdb21' or dataset == 'ava', 'invalid dataset'
 
-# train_n_sample_from = 20 if dataset == 'ava' else 1
+train_n_sample_from = 20 if dataset == 'ava' else 1
+cfg.SOLVER.STEPS = [i*train_n_sample_from for i in cfg.SOLVER_STEPS] # adjust learning rate schedule to accommodate smaller epoch size
 # train_n_sample_from = 2000 if dataset == 'ava' else 1 # for sanity check
-test_n_sample_from = 60 if dataset == 'ava' else 1
+test_n_sample_from = 100 if dataset == 'ava' else 1
 
 if dataset == 'ava':
-    train_dataset = Ava(cfg, split='train', only_detection=False, sanity_check=True)
-    print(f"Training data size: {len(train_dataset)}")
-    test_dataset  = Ava(cfg, split='val', only_detection=False)
-    """
+    train_dataset = Ava(cfg, split='train', only_detection=False, sanity_check=False)
     train_rs = RandomSampler(train_dataset,replacement=True, num_samples=int(len(train_dataset)/train_n_sample_from))
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=train_rs, shuffle=False, 
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
     """
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, 
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=True, pin_memory=True)
+    """
+    test_dataset  = Ava(cfg, split='val', only_detection=False)
     test_rs = RandomSampler(test_dataset, replacement=True, num_samples=int(len(test_dataset)/test_n_sample_from))
     test_loader  = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, sampler=test_rs, shuffle=False,
                                                num_workers=cfg.DATA_LOADER.NUM_WORKERS, drop_last=False, pin_memory=True)
@@ -163,15 +163,13 @@ if cfg.TRAIN.EVALUATE:
 else:
     for epoch in range(cfg.TRAIN.BEGIN_EPOCH, cfg.TRAIN.END_EPOCH + 1):
         # Adjust learning rate
-        if epoch == 1 or epoch%100==0:
-            lr_new = adjust_learning_rate(optimizer, epoch, cfg)
+        lr_new = adjust_learning_rate(optimizer, epoch, cfg)
         logging('training at epoch %d, lr %f' % (epoch, lr_new))
         train(cfg, epoch, model, train_loader, loss_module, optimizer)
         logging('testing at epoch %d' % (epoch))
-        # score = test(cfg, epoch, model, test_loader)
-        if epoch%100 == 0:
-            score = test(cfg, epoch, model, train_loader)
-            wandb.log({"Test Score": score})
+        if epoch%5 == 0:
+            score = test(cfg, epoch, model, test_loader)
+            wandb.log({"Test mAP": score})
             wandb.log({'Learning Rate': lr_new})
         
             # Save the model to backup directory
