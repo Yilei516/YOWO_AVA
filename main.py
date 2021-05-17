@@ -48,6 +48,7 @@ if use_cuda:
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus # TODO: add to config e.g. 0,1,2,3
     # torch.cuda.manual_seed(seed)
 else:
+    pass
     # torch.manual_seed(seed)
 
 model = YOWO(cfg)
@@ -77,7 +78,7 @@ if cfg.TRAIN.RESUME_PATH:
         chkpt = [c for c in os.listdir(cfg.TRAIN.RESUME_PATH) if chkpt_core in c and 'checkpoint.pth' in c]
         if chkpt:
             max_len = max([len(c) for c in chkpt])
-            hkpt = sorted([c for c in chkpt if len(c)==max_len])
+            chkpt = sorted([c for c in chkpt if len(c)==max_len])
             chkpt = os.path.join(cfg.TRAIN.RESUME_PATH,chkpt[-1])
     if chkpt:
         print('loading checkpoint {}'.format(chkpt))
@@ -109,7 +110,7 @@ dataset = cfg.TRAIN.DATASET
 assert dataset == 'ucf24' or dataset == 'jhmdb21' or dataset == 'ava', 'invalid dataset'
 
 train_n_sample_from = 20 if dataset == 'ava' else 1
-cfg.SOLVER.STEPS = [i*train_n_sample_from for i in cfg.SOLVER_STEPS] # adjust learning rate schedule to accommodate smaller epoch size
+cfg.SOLVER.STEPS = [i*train_n_sample_from for i in cfg.SOLVER.STEPS] # adjust learning rate schedule to accommodate smaller epoch size
 # train_n_sample_from = 2000 if dataset == 'ava' else 1 # for sanity check
 test_n_sample_from = 100 if dataset == 'ava' else 1
 
@@ -166,25 +167,28 @@ else:
         lr_new = adjust_learning_rate(optimizer, epoch, cfg)
         logging('training at epoch %d, lr %f' % (epoch, lr_new))
         train(cfg, epoch, model, train_loader, loss_module, optimizer)
-        logging('testing at epoch %d' % (epoch))
         if epoch%5 == 0:
+            logging('testing at epoch %d' % (epoch))
             score = test(cfg, epoch, model, test_loader)
             wandb.log({"Test mAP": score})
             wandb.log({'Learning Rate': lr_new})
-        
-            # Save the model to backup directory
-            is_best = score > best_score
-            if is_best:
-                print("New best score is achieved: ", score)
-                print("Previous score was: ", best_score)
-                best_score = score
-
-            state = {
-                'wandb_id': wandb_id,
-                'epoch': epoch,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'score': score
-                }
-            save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES,epoch)
-            logging('Weights are saved to backup directory: %s' % (cfg.BACKUP_DIR))
+        else:
+            score = 0
+        # Save the model to backup directory
+        """
+        is_best = score > best_score
+        if is_best:
+            print("New best score is achieved: ", score)
+            print("Previous score was: ", best_score)
+            best_score = score
+        """
+        is_best = False
+        state = {
+            'wandb_id': wandb_id,
+            'epoch': epoch,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'score': score
+            }
+        save_checkpoint(state, is_best, cfg.BACKUP_DIR, cfg.TRAIN.DATASET, cfg.DATA.NUM_FRAMES,epoch)
+        logging('Weights are saved to backup directory: %s' % (cfg.BACKUP_DIR))

@@ -91,8 +91,8 @@ class AVAMeter(object):
         groundtruth = tuple(reduce_keys(i) for i in groundtruth)
         detections = tuple(reduce_keys(i) for i in detections)
 
-        logging.info("Evaluating with %d unique GT frames." % len(groundtruth[0]))
-        logging.info("Evaluating with %d unique detection frames" % len(detections[0]))
+        logging("Evaluating with %d unique GT frames." % len(groundtruth[0]))
+        logging("Evaluating with %d unique detection frames" % len(detections[0]))
 
         name = "latest"
         write_results(detections, os.path.join(self.cfg.BACKUP_DIR, "detections_%s.csv" % name))
